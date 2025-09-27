@@ -21,26 +21,38 @@ def _prepare_payload(messages: List[Mapping[str, Any]], model: str, extra: Mappi
     return json.dumps(payload).encode("utf-8")
 
 
-def _call_endpoint(base_url: str, payload: bytes, *, timeout: int = _DEFAULT_TIMEOUT, headers: Optional[Mapping[str, str]] = None) -> Dict[str, Any]:
-    request = Request(base_url, data=payload, method="POST")
-    request.add_header("Content-Type", "application/json")
-    api_key = os.getenv("LLM_API_KEY")
-    if api_key:
-        request.add_header("Authorization", f"Bearer {api_key}")
-    if headers:
-        for key, value in headers.items():
-            request.add_header(key, value)
+def _call_endpoint(
+    base_url: str,
+    payload: bytes,
+    *,
+    timeout: int = _DEFAULT_TIMEOUT,
+    headers: Optional[Mapping[str, str]] = None,
+    retries: int = 0,
+) -> Dict[str, Any]:
+    attempt = 0
+    last_error: Optional[Exception] = None
+    while attempt <= retries:
+        request = Request(base_url, data=payload, method="POST")
+        request.add_header("Content-Type", "application/json")
+        if headers:
+            for key, value in headers.items():
+                request.add_header(key, value)
 
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            response_data = response.read().decode("utf-8")
-    except HTTPError as exc:  # pragma: no cover - passthrough for manual testing
-        body = exc.read().decode("utf-8") if exc.fp else ""
-        raise LLMClientError(f"LLM backend error {exc.code}: {body}") from exc
-    except URLError as exc:  # pragma: no cover - passthrough for manual testing
-        raise LLMClientError(f"Failed to reach LLM backend: {exc.reason}") from exc
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                response_data = response.read().decode("utf-8")
+            return json.loads(response_data)
+        except HTTPError as exc:  # pragma: no cover - passthrough for manual testing
+            body = exc.read().decode("utf-8") if exc.fp else ""
+            last_error = LLMClientError(f"LLM backend error {exc.code}: {body}")
+        except URLError as exc:  # pragma: no cover - passthrough for manual testing
+            last_error = LLMClientError(f"Failed to reach LLM backend: {exc.reason}")
 
-    return json.loads(response_data)
+        attempt += 1
+        if attempt > retries and last_error is not None:
+            raise last_error
+
+    raise LLMClientError("LLM request failed for unknown reasons.")
 
 
 def call_llm(
@@ -48,7 +60,9 @@ def call_llm(
     *,
     model: Optional[str] = None,
     base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
     timeout: int = _DEFAULT_TIMEOUT,
+    retries: int = 0,
     **kwargs: Any,
 ) -> Dict[str, Any]:
     """Invoke a chat-completion style endpoint.
@@ -61,8 +75,12 @@ def call_llm(
         Optional model override. Defaults to the ``LLM_MODEL`` environment variable.
     base_url:
         Optional endpoint override. Defaults to ``LLM_BASE_URL``.
+    api_key:
+        Optional API key override. Defaults to ``LLM_API_KEY``.
     timeout:
         Request timeout in seconds.
+    retries:
+        Number of additional retry attempts upon failure.
     kwargs:
         Extra keyword arguments forwarded to the payload.
     """
@@ -75,8 +93,11 @@ def call_llm(
     if not resolved_model:
         raise ValueError("Model name must be provided via argument or LLM_MODEL environment variable.")
 
+    resolved_api_key = api_key or os.getenv("LLM_API_KEY")
+    headers = {"Authorization": f"Bearer {resolved_api_key}"} if resolved_api_key else None
+
     payload = _prepare_payload(list(messages), resolved_model, kwargs)
-    return _call_endpoint(resolved_base_url, payload, timeout=timeout)
+    return _call_endpoint(resolved_base_url, payload, timeout=timeout, headers=headers, retries=retries)
 
 
 def call_vision(
@@ -85,10 +106,17 @@ def call_vision(
     *,
     model: Optional[str] = None,
     base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
     timeout: int = _DEFAULT_TIMEOUT,
+    retries: int = 0,
     **kwargs: Any,
 ) -> Dict[str, Any]:
-    """Invoke a multimodal endpoint for vision-capable models."""
+    """Invoke a multimodal endpoint for vision-capable models.
+
+    Parameters mirror :func:`call_llm` with image-specific inputs. The ``base_url`` and
+    ``api_key`` fall back to ``VISION_*`` environment variables before reusing the LLM
+    defaults.
+    """
 
     resolved_base_url = base_url or os.getenv("VISION_BASE_URL") or os.getenv("LLM_BASE_URL")
     if not resolved_base_url:
@@ -106,4 +134,6 @@ def call_vision(
     if kwargs:
         payload_dict.update(kwargs)
     payload = json.dumps(payload_dict).encode("utf-8")
-    return _call_endpoint(resolved_base_url, payload, timeout=timeout)
+    resolved_api_key = api_key or os.getenv("VISION_API_KEY") or os.getenv("LLM_API_KEY")
+    headers = {"Authorization": f"Bearer {resolved_api_key}"} if resolved_api_key else None
+    return _call_endpoint(resolved_base_url, payload, timeout=timeout, headers=headers, retries=retries)

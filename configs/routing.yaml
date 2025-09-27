@@ -1,0 +1,14 @@
+# Routing configuration controlling extraction strategies.
+defaults:
+  use_ocr: ${USE_OCR:false}
+  max_workers: ${PIPELINE_WORKERS:4}
+
+thresholds:
+  text_density: 0.2
+  image_area_ratio: 0.15
+  table_confidence: 0.5
+
+strategies:
+  tables: camelot
+  text: pymupdf
+  vision: basic

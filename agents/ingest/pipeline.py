@@ -26,11 +26,22 @@ class IngestStage:
 
         documents = []
         for path in self._config.input_paths:
-            text = path.read_text(encoding="utf-8") if path.exists() else ""
+            pages: list[str] = []
+            if path.exists():
+                if path.suffix.lower() in {".txt", ".md"}:
+                    pages = [path.read_text(encoding="utf-8")]
+                else:
+                    # Binary formats (e.g. PDF) are currently left empty as placeholders.
+                    pages = [""]
+
             documents.append(
                 DocumentData(
-                    text_pages=[text],
-                    meta={"document_id": path.stem, "source_path": str(path)},
+                    pages=pages,
+                    metadata={
+                        "document_id": path.stem,
+                        "source_path": str(path),
+                        "mime_type": path.suffix.lower().lstrip("."),
+                    },
                 )
             )
         return documents
