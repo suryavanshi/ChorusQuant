@@ -23,7 +23,7 @@ class SynthesizeStage:
         """Attach synthesized output placeholders to each document."""
 
         for document in batch:
-            document.meta.setdefault(
+            document.metadata.setdefault(
                 "report",
                 {
                     "format": self._config.output_format,

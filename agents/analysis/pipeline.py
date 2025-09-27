@@ -32,5 +32,5 @@ class AnalysisStage:
         """Attach analysis metadata to each document."""
 
         for document in batch:
-            document.meta.setdefault("analysis", AnalysisResult(metrics={}, notes={}).__dict__)
+            document.metadata.setdefault("analysis", AnalysisResult(metrics={}, notes={}).__dict__)
         return batch

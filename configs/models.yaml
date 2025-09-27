@@ -1,0 +1,12 @@
+# Default model configuration with environment variable overrides.
+llm:
+  model: ${LLM_MODEL:stub-gpt}
+  base_url: ${LLM_BASE_URL:http://localhost:8000/v1/chat}
+  api_key: ${LLM_API_KEY:demo-key}
+  timeout: 60
+
+vision:
+  model: ${VISION_MODEL:stub-vision}
+  base_url: ${VISION_BASE_URL:http://localhost:8000/v1/vision}
+  api_key: ${VISION_API_KEY:demo-key}
+  timeout: 90

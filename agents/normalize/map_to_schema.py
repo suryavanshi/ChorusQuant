@@ -24,5 +24,5 @@ class NormalizeStage:
         """Perform basic normalization and passthrough for now."""
 
         for document in batch:
-            document.meta.setdefault("normalized", "true")
+            document.metadata.setdefault("normalized", "true")
         return batch

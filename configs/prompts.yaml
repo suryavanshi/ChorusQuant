@@ -1,0 +1,10 @@
+# Prompt templates used across agents.
+summaries:
+  base: |
+    You are a meticulous financial analyst. Produce a concise summary of the provided
+    document data. Respond in JSON matching the supplied schema.
+
+qa:
+  base: |
+    You answer financial questions using only the given context.
+    Cite evidence spans for every numeric answer.

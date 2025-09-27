@@ -33,4 +33,4 @@ def make_default_plan(document: DocumentData) -> DocumentPlan:
         PlanStep(name="verify", description="Cross-check assertions and collect evidence."),
         PlanStep(name="synthesize", description="Generate human-readable and machine-readable outputs."),
     ]
-    return DocumentPlan(document_id=document.meta.get("document_id", "unknown"), steps=steps)
+    return DocumentPlan(document_id=document.metadata.get("document_id", "unknown"), steps=steps)

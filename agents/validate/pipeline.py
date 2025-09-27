@@ -23,12 +23,12 @@ class ValidateStage:
         """Mark each document as verified if minimal evidence is present."""
 
         for document in batch:
-            if document.text_pages:
-                document.meta.setdefault(
+            if document.pages:
+                document.metadata.setdefault(
                     "evidence",
                     [
-                        Evidence(text=document.text_pages[0][:200], page=1).model_dump(),
+                        Evidence(text=document.pages[0][:200], page=1).model_dump(),
                     ],
                 )
-            document.meta.setdefault("verified", str(self._config.require_numeric_evidence).lower())
+            document.metadata.setdefault("verified", str(self._config.require_numeric_evidence).lower())
         return batch
